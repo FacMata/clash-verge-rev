@@ -23,7 +23,8 @@
     "closeAll": "すべて閉じる",
     "clear": "クリア",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "import": "Import"
   },
   "labels": {
     "updateAt": "更新日時",

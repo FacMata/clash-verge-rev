@@ -109,9 +109,17 @@
         "useSystemProxy": "Usar proxy del sistema para actualizar",
         "useClashProxy": "Usar proxy del núcleo para actualizar",
         "acceptInvalidCerts": "Allows Invalid Certificates (Danger)",
-        "allowAutoUpdate": "Allow Auto Update"
+        "allowAutoUpdate": "Allow Auto Update",
+        "encryptedSubscription": "Suscripción cifrada",
+        "subscriptionUuid": "Clave de descifrado (UUID)"
+      },
+      "hints": {
+        "subscriptionUuid": "UUID de su panel de suscripción"
       },
       "feedback": {
+        "errors": {
+          "uuidRequired": "Se requiere UUID para suscripciones cifradas"
+        },
         "notifications": {
           "creationRetry": "Error al crear la suscripción. Intentando con el proxy de Clash...",
           "creationSuccess": "Creación de la suscripción con el proxy de Clash exitosa"
@@ -177,6 +185,13 @@
     },
     "logViewer": {
       "title": "Salida de la consola del script"
+    },
+    "uuidInput": {
+      "title": "Encrypted Subscription Detected",
+      "fields": {
+        "url": "Subscription URL"
+      },
+      "hint": "This subscription is encrypted. Please enter your UUID to decrypt it."
     }
   }
 }

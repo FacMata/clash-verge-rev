@@ -109,9 +109,17 @@
         "useSystemProxy": "Sistem Vekil'ini Kullan",
         "useClashProxy": "Clash Vekil'ini Kullan",
         "acceptInvalidCerts": "Geçersiz Sertifikalara İzin Ver (Tehlikeli)",
-        "allowAutoUpdate": "Allow Auto Update"
+        "allowAutoUpdate": "Allow Auto Update",
+        "encryptedSubscription": "Şifreli Abonelik",
+        "subscriptionUuid": "Şifre Çözme Anahtarı (UUID)"
+      },
+      "hints": {
+        "subscriptionUuid": "Abonelik panelinizden UUID"
       },
       "feedback": {
+        "errors": {
+          "uuidRequired": "Şifreli abonelikler için UUID gereklidir"
+        },
         "notifications": {
           "creationRetry": "Profil oluşturma başarısız oldu, Clash vekil ile yeniden deneniyor...",
           "creationSuccess": "Clash vekil ile profil oluşturma başarılı oldu"
@@ -177,6 +185,13 @@
     },
     "logViewer": {
       "title": "Betik Konsolu"
+    },
+    "uuidInput": {
+      "title": "Encrypted Subscription Detected",
+      "fields": {
+        "url": "Subscription URL"
+      },
+      "hint": "This subscription is encrypted. Please enter your UUID to decrypt it."
     }
   }
 }

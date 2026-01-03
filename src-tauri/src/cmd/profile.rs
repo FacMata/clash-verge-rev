@@ -2,7 +2,7 @@ use super::CmdResult;
 use super::StringifyErr as _;
 use crate::{
     config::{
-        Config, IProfiles, PrfItem, PrfOption,
+        Config, EncryptedSubscriptionCache, IProfiles, PrfItem, PrfOption,
         profiles::{
             profiles_append_item_with_filedata_safe, profiles_delete_item_safe, profiles_patch_item_safe,
             profiles_reorder_safe, profiles_save_file_safe,
@@ -13,7 +13,7 @@ use crate::{
     feat,
     module::auto_backup::{AutoBackupManager, AutoBackupTrigger},
     process::AsyncHandler,
-    utils::{dirs, help},
+    utils::{dirs, help, subscription_decrypt::decrypt_subscription},
 };
 use clash_verge_draft::SharedDraft;
 use clash_verge_logging::{Type, logging};
@@ -108,6 +108,65 @@ pub async fn import_profile(url: std::string::String, option: Option<PrfOption>)
     }
 
     logging!(info, Type::Cmd, "[导入订阅] 导入完成: {}", url);
+    AutoBackupManager::trigger_backup(AutoBackupTrigger::ProfileChange);
+    Ok(())
+}
+
+/// 导入加密配置文件（从缓存）
+#[tauri::command]
+pub async fn import_encrypted_profile(cache: EncryptedSubscriptionCache, uuid: std::string::String) -> CmdResult {
+    logging!(info, Type::Cmd, "[导入加密订阅] 开始解密并导入: {}", cache.url);
+
+    // 解密密文
+    let decrypted_data = match decrypt_subscription(&cache.ciphertext, &uuid) {
+        Ok(data) => data,
+        Err(e) => {
+            logging!(error, Type::Cmd, "[导入加密订阅] 解密失败: {}", e);
+            return Err(format!("解密失败: {}", e).into());
+        }
+    };
+
+    // 从缓存创建配置项
+    let item = &mut match PrfItem::from_encrypted_cache(&cache, decrypted_data, &uuid).await {
+        Ok(it) => {
+            logging!(info, Type::Cmd, "[导入加密订阅] 解密完成，开始保存配置");
+            it
+        }
+        Err(e) => {
+            logging!(error, Type::Cmd, "[导入加密订阅] 创建配置失败: {}", e);
+            return Err(format!("导入加密订阅失败: {}", e).into());
+        }
+    };
+
+    match profiles_append_item_safe(item).await {
+        Ok(_) => match profiles_save_file_safe().await {
+            Ok(_) => {
+                logging!(info, Type::Cmd, "[导入加密订阅] 配置文件保存成功");
+            }
+            Err(e) => {
+                logging!(error, Type::Cmd, "[导入加密订阅] 保存配置文件失败: {}", e);
+            }
+        },
+        Err(e) => {
+            logging!(error, Type::Cmd, "[导入加密订阅] 保存配置失败: {}", e);
+            return Err(format!("导入加密订阅失败: {}", e).into());
+        }
+    }
+
+    if let Some(uid) = &item.uid {
+        logging!(info, Type::Cmd, "[导入加密订阅] 发送配置变更通知: {}", uid);
+        handle::Handle::notify_profile_changed(uid.clone());
+    }
+
+    // 异步保存配置文件并发送全局通知
+    let uid_clone = item.uid.clone();
+    if let Some(uid) = uid_clone {
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        logging!(info, Type::Cmd, "[导入加密订阅] 发送配置变更通知: {}", uid);
+        handle::Handle::notify_profile_changed(uid);
+    }
+
+    logging!(info, Type::Cmd, "[导入加密订阅] 导入完成: {}", cache.url);
     AutoBackupManager::trigger_backup(AutoBackupTrigger::ProfileChange);
     Ok(())
 }

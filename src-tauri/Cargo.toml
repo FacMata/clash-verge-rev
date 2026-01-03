@@ -101,6 +101,8 @@ arc-swap = "1.8.0"
 rust_iso3166 = "0.1.14"
 dark-light = "2.0.0"
 governor = "0.10.4"
+hkdf = "0.12"
+sha2 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
 deelevate = { workspace = true }

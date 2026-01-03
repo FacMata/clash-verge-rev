@@ -3,6 +3,7 @@ use crate::{
     utils::{
         dirs, help,
         network::{NetworkManager, ProxyType},
+        subscription_decrypt::{decrypt_subscription, is_encrypted_response},
         tmpl,
     },
 };
@@ -74,6 +75,23 @@ pub struct PrfExtra {
     pub expire: u64,
 }
 
+/// 加密订阅缓存，用于前端暂存密文，避免重复请求
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct EncryptedSubscriptionCache {
+    /// 订阅 URL
+    pub url: String,
+    /// 原始密文（已 trim BOM）
+    pub ciphertext: String,
+    /// 从 Content-Disposition 解析的文件名
+    pub name: Option<String>,
+    /// subscription-userinfo
+    pub extra: Option<PrfExtra>,
+    /// profile-update-interval (分钟)
+    pub update_interval: Option<u64>,
+    /// profile-web-page-url
+    pub home: Option<String>,
+}
+
 #[derive(Default, Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PrfOption {
     /// for `remote` profile's http request
@@ -110,6 +128,17 @@ pub struct PrfOption {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allow_auto_update: Option<bool>,
 
+    /// for `remote` profile
+    /// enable encrypted subscription decryption
+    /// default is `false`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub encrypted_subscription: Option<bool>,
+
+    /// for `remote` profile
+    /// UUID for decrypting encrypted subscription
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subscription_uuid: Option<String>,
+
     pub merge: Option<String>,
 
     pub script: Option<String>,
@@ -133,6 +162,8 @@ impl PrfOption {
                     b_ref.danger_accept_invalid_certs.or(result.danger_accept_invalid_certs);
                 result.allow_auto_update = b_ref.allow_auto_update.or(result.allow_auto_update);
                 result.update_interval = b_ref.update_interval.or(result.update_interval);
+                result.encrypted_subscription = b_ref.encrypted_subscription.or(result.encrypted_subscription);
+                result.subscription_uuid = b_ref.subscription_uuid.clone().or(result.subscription_uuid);
                 result.merge = b_ref.merge.clone().or(result.merge);
                 result.script = b_ref.script.clone().or(result.script);
                 result.rules = b_ref.rules.clone().or(result.rules);
@@ -260,6 +291,12 @@ impl PrfItem {
         let self_proxy = option.is_some_and(|o| o.self_proxy.unwrap_or(false));
         let accept_invalid_certs = option.is_some_and(|o| o.danger_accept_invalid_certs.unwrap_or(false));
         let allow_auto_update = option.map(|o| o.allow_auto_update.unwrap_or(true));
+        let encrypted_subscription = option.is_some_and(|o| o.encrypted_subscription.unwrap_or(false));
+        let subscription_uuid: Option<String> = option
+            .and_then(|o| o.subscription_uuid.as_ref())
+            .map(|uuid| uuid.trim())
+            .filter(|uuid| !uuid.is_empty())
+            .map(|uuid| uuid.into());
         let user_agent = option.and_then(|o| o.user_agent.clone());
         let update_interval = option.and_then(|o| o.update_interval);
         let timeout = option.and_then(|o| o.timeout_seconds).unwrap_or(20);
@@ -366,13 +403,35 @@ impl PrfItem {
         let name = name
             .map(|s| s.to_owned())
             .unwrap_or_else(|| filename.map(|s| s.into()).unwrap_or_else(|| "Remote File".into()));
+
+        // Check if response is encrypted (via X-Encrypted header)
+        let is_encrypted = is_encrypted_response(header);
+
         let data = resp.text_with_charset()?;
 
         // process the charset "UTF-8 with BOM"
         let data = data.trim_start_matches('\u{feff}');
 
+        // 如果是加密订阅但没有提供 UUID，返回包含缓存的特殊错误
+        if is_encrypted && subscription_uuid.is_none() {
+            let cache = EncryptedSubscriptionCache {
+                url: url.into(),
+                ciphertext: data.into(),
+                name: Some(name.clone()),
+                extra,
+                update_interval,
+                home: home.clone(),
+            };
+            let cache_json = serde_json::to_string(&cache).unwrap_or_default();
+            bail!("ENCRYPTED_CACHE::{}", cache_json);
+        }
+
+        // Handle encrypted subscription content
+        let data =
+            Self::decrypt_data_if_needed(data, is_encrypted, encrypted_subscription, subscription_uuid.as_ref())?;
+
         // check the data whether the valid yaml format
-        let yaml = serde_yaml_ng::from_str::<Mapping>(data).context("the remote profile data is invalid yaml")?;
+        let yaml = serde_yaml_ng::from_str::<Mapping>(&data).context("the remote profile data is invalid yaml")?;
 
         if !yaml.contains_key("proxies") && !yaml.contains_key("proxy-providers") {
             bail!("profile does not contain `proxies` or `proxy-providers`");
@@ -421,11 +480,80 @@ impl PrfItem {
                 proxies,
                 groups,
                 allow_auto_update,
+                encrypted_subscription: if encrypted_subscription { Some(true) } else { None },
+                subscription_uuid,
                 ..PrfOption::default()
             }),
             home,
             updated: Some(chrono::Local::now().timestamp() as usize),
             file_data: Some(data.into()),
+        })
+    }
+
+    /// ## Remote type from encrypted cache
+    /// 从缓存的加密订阅数据创建配置项（已解密）
+    pub async fn from_encrypted_cache(
+        cache: &EncryptedSubscriptionCache,
+        decrypted_data: std::string::String,
+        uuid: &str,
+    ) -> Result<Self> {
+        // 验证解密后的数据是有效的 YAML
+        let yaml = serde_yaml_ng::from_str::<Mapping>(&decrypted_data)
+            .context("the decrypted subscription data is invalid yaml")?;
+
+        if !yaml.contains_key("proxies") && !yaml.contains_key("proxy-providers") {
+            bail!("profile does not contain `proxies` or `proxy-providers`");
+        }
+
+        let uid = help::get_uid("R").into();
+        let file = format!("{uid}.yaml").into();
+        let name = cache.name.clone().unwrap_or_else(|| "Remote File".into());
+
+        // 创建默认的 enhance 项
+        let merge_item = &mut Self::from_merge(None)?;
+        profiles::profiles_append_item_safe(merge_item).await?;
+        let merge = merge_item.uid.clone();
+
+        let script_item = &mut Self::from_script(None)?;
+        profiles::profiles_append_item_safe(script_item).await?;
+        let script = script_item.uid.clone();
+
+        let rules_item = &mut Self::from_rules()?;
+        profiles::profiles_append_item_safe(rules_item).await?;
+        let rules = rules_item.uid.clone();
+
+        let proxies_item = &mut Self::from_proxies()?;
+        profiles::profiles_append_item_safe(proxies_item).await?;
+        let proxies = proxies_item.uid.clone();
+
+        let groups_item = &mut Self::from_groups()?;
+        profiles::profiles_append_item_safe(groups_item).await?;
+        let groups = groups_item.uid.clone();
+
+        Ok(Self {
+            uid: Some(uid),
+            itype: Some("remote".into()),
+            name: Some(name),
+            desc: None,
+            file: Some(file),
+            url: Some(cache.url.clone()),
+            selected: None,
+            extra: cache.extra,
+            option: Some(PrfOption {
+                update_interval: cache.update_interval,
+                merge,
+                script,
+                rules,
+                proxies,
+                groups,
+                allow_auto_update: Some(true),
+                encrypted_subscription: Some(true),
+                subscription_uuid: Some(uuid.into()),
+                ..PrfOption::default()
+            }),
+            home: cache.home.clone(),
+            updated: Some(chrono::Local::now().timestamp() as usize),
+            file_data: Some(decrypted_data.into()),
         })
     }
 
@@ -534,6 +662,40 @@ impl PrfItem {
         fs::write(path, data.as_bytes())
             .await
             .context("failed to save the file")
+    }
+
+    /// Helper function to decrypt subscription data if needed
+    fn decrypt_data_if_needed(
+        data: &str,
+        is_encrypted: bool,
+        encrypted_subscription: bool,
+        subscription_uuid: Option<&String>,
+    ) -> Result<std::string::String> {
+        if is_encrypted {
+            // Server indicated encrypted response via X-Encrypted: 1 header
+            let uuid = subscription_uuid.ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Encrypted subscription detected (X-Encrypted: 1), but no UUID provided. \
+                    Please enable 'Encrypted Subscription' and enter your UUID."
+                )
+            })?;
+            decrypt_subscription(data, uuid.as_str())
+                .context("Failed to decrypt subscription. Please verify UUID is correct.")
+        } else if encrypted_subscription {
+            // User enabled encrypted subscription but server didn't set X-Encrypted header
+            // Try to decrypt anyway (for older servers that don't set the header)
+            let uuid = subscription_uuid.ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Encrypted subscription is enabled, but no UUID provided. \
+                    Please enter your UUID."
+                )
+            })?;
+            decrypt_subscription(data, uuid.as_str()).with_context(|| {
+                "Failed to decrypt subscription. If your subscription is plaintext, disable encrypted subscription, clear the UUID, and refresh."
+            })
+        } else {
+            Ok(data.to_string())
+        }
     }
 }
 

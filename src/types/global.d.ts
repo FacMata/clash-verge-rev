@@ -287,6 +287,8 @@ interface IProfileOption {
   timeout_seconds?: number;
   danger_accept_invalid_certs?: boolean;
   allow_auto_update?: boolean;
+  encrypted_subscription?: boolean;
+  subscription_uuid?: string;
   merge?: string;
   script?: string;
   rules?: string;
@@ -297,6 +299,29 @@ interface IProfileOption {
 interface IProfilesConfig {
   current?: string;
   items?: IProfileItem[];
+}
+
+/**
+ * 加密订阅缓存，用于暂存密文避免重复请求
+ */
+interface EncryptedSubscriptionCache {
+  /** 订阅 URL */
+  url: string;
+  /** 原始密文（已 trim BOM） */
+  ciphertext: string;
+  /** 从 Content-Disposition 解析的文件名 */
+  name?: string;
+  /** subscription-userinfo */
+  extra?: {
+    upload: number;
+    download: number;
+    total: number;
+    expire: number;
+  };
+  /** profile-update-interval (分钟) */
+  update_interval?: number;
+  /** profile-web-page-url */
+  home?: string;
 }
 
 interface IVergeTestItem {

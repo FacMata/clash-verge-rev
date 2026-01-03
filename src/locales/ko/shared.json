@@ -23,7 +23,8 @@
     "closeAll": "모두 닫기",
     "clear": "지우기",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "import": "Import"
   },
   "labels": {
     "updateAt": "업데이트 시간",

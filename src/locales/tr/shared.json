@@ -23,7 +23,8 @@
     "closeAll": "Tümünü Kapat",
     "clear": "Temizle",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "import": "Import"
   },
   "labels": {
     "updateAt": "Güncelleme Zamanı",

@@ -109,9 +109,17 @@
         "useSystemProxy": "使用系統代理更新",
         "useClashProxy": "使用內核代理更新",
         "acceptInvalidCerts": "允許無效憑證（危險）",
-        "allowAutoUpdate": "允許自動更新"
+        "allowAutoUpdate": "允許自動更新",
+        "encryptedSubscription": "加密訂閱",
+        "subscriptionUuid": "解密金鑰 (UUID)"
+      },
+      "hints": {
+        "subscriptionUuid": "從訂閱面板取得的 UUID"
       },
       "feedback": {
+        "errors": {
+          "uuidRequired": "加密訂閱需要提供 UUID"
+        },
         "notifications": {
           "creationRetry": "訂閱建立失敗，嘗試使用 Clash 代理建立",
           "creationSuccess": "使用 Clash 代理建立訂閱成功"
@@ -177,6 +185,13 @@
     },
     "logViewer": {
       "title": "指令碼控制台輸出"
+    },
+    "uuidInput": {
+      "title": "Encrypted Subscription Detected",
+      "fields": {
+        "url": "Subscription URL"
+      },
+      "hint": "This subscription is encrypted. Please enter your UUID to decrypt it."
     }
   }
 }

@@ -109,9 +109,17 @@
         "useSystemProxy": "使用系统代理更新",
         "useClashProxy": "使用内核代理更新",
         "acceptInvalidCerts": "允许无效证书（危险）",
-        "allowAutoUpdate": "允许自动更新"
+        "allowAutoUpdate": "允许自动更新",
+        "encryptedSubscription": "加密订阅",
+        "subscriptionUuid": "解密密钥 (UUID)"
+      },
+      "hints": {
+        "subscriptionUuid": "从订阅面板获取的 UUID"
       },
       "feedback": {
+        "errors": {
+          "uuidRequired": "加密订阅需要提供 UUID"
+        },
         "notifications": {
           "creationRetry": "订阅创建失败，尝试使用 Clash 代理创建",
           "creationSuccess": "使用 Clash 代理创建订阅成功"
@@ -177,6 +185,13 @@
     },
     "logViewer": {
       "title": "脚本控制台输出"
+    },
+    "uuidInput": {
+      "title": "检测到加密订阅",
+      "fields": {
+        "url": "订阅链接"
+      },
+      "hint": "该订阅已加密，请输入您的 UUID 进行解密。"
     }
   }
 }

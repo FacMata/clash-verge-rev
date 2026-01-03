@@ -306,6 +306,9 @@ export interface TranslationResources {
         };
         profileForm: {
           feedback: {
+            errors: {
+              uuidRequired: string;
+            };
             notifications: {
               creationRetry: string;
               creationSuccess: string;
@@ -315,12 +318,17 @@ export interface TranslationResources {
             acceptInvalidCerts: string;
             allowAutoUpdate: string;
             description: string;
+            encryptedSubscription: string;
             httpTimeout: string;
             subscriptionUrl: string;
+            subscriptionUuid: string;
             type: string;
             updateInterval: string;
             useClashProxy: string;
             useSystemProxy: string;
+          };
+          hints: {
+            subscriptionUuid: string;
           };
           title: {
             create: string;
@@ -335,6 +343,13 @@ export interface TranslationResources {
           placeholders: {
             multiUri: string;
           };
+          title: string;
+        };
+        uuidInput: {
+          fields: {
+            url: string;
+          };
+          hint: string;
           title: string;
         };
       };
@@ -1194,6 +1209,7 @@ export interface TranslationResources {
         edit: string;
         enable: string;
         hideDetails: string;
+        import: string;
         listView: string;
         new: string;
         next: string;

@@ -23,7 +23,8 @@
     "closeAll": "إغلاق الكل",
     "clear": "مسح",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "import": "Import"
   },
   "labels": {
     "updateAt": "التحديث عند",

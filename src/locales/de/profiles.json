@@ -109,9 +109,17 @@
         "useSystemProxy": "Systemproxy zur Aktualisierung verwenden",
         "useClashProxy": "Kernel-Proxy zur Aktualisierung verwenden",
         "acceptInvalidCerts": "Allows Invalid Certificates (Danger)",
-        "allowAutoUpdate": "Allow Auto Update"
+        "allowAutoUpdate": "Allow Auto Update",
+        "encryptedSubscription": "Verschlüsseltes Abonnement",
+        "subscriptionUuid": "Entschlüsselungsschlüssel (UUID)"
+      },
+      "hints": {
+        "subscriptionUuid": "UUID aus Ihrem Abonnement-Panel"
       },
       "feedback": {
+        "errors": {
+          "uuidRequired": "UUID ist für verschlüsselte Abonnements erforderlich"
+        },
         "notifications": {
           "creationRetry": "Erstellung des Abonnements fehlgeschlagen. Versuche es mit dem Clash-Proxy erneut...",
           "creationSuccess": "Erstellung des Abonnements mit Clash-Proxy erfolgreich"
@@ -177,6 +185,13 @@
     },
     "logViewer": {
       "title": "Skript-Konsole-Ausgabe"
+    },
+    "uuidInput": {
+      "title": "Encrypted Subscription Detected",
+      "fields": {
+        "url": "Subscription URL"
+      },
+      "hint": "This subscription is encrypted. Please enter your UUID to decrypt it."
     }
   }
 }

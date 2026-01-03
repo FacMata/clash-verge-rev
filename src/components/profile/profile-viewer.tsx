@@ -55,6 +55,8 @@ export function ProfileViewer({ onChange, ref }: ProfileViewerProps) {
         option: {
           with_proxy: false,
           self_proxy: false,
+          encrypted_subscription: false,
+          subscription_uuid: "",
         },
       },
     });
@@ -77,6 +79,7 @@ export function ProfileViewer({ onChange, ref }: ProfileViewerProps) {
 
   const selfProxy = watch("option.self_proxy");
   const withProxy = watch("option.with_proxy");
+  const encryptedSubscription = watch("option.encrypted_subscription");
 
   useEffect(() => {
     if (selfProxy) setValue("option.with_proxy", false);
@@ -96,6 +99,17 @@ export function ProfileViewer({ onChange, ref }: ProfileViewerProps) {
           throw new Error("The URL should not be null");
         }
 
+        // 验证加密订阅配置
+        if (
+          form.type === "remote" &&
+          form.option?.encrypted_subscription &&
+          !form.option?.subscription_uuid?.trim()
+        ) {
+          throw new Error(
+            t("profiles.modals.profileForm.feedback.errors.uuidRequired"),
+          );
+        }
+
         // 处理表单数据
         const option = form.option ? { ...form.option } : undefined;
         if (option?.timeout_seconds) {
@@ -108,6 +122,16 @@ export function ProfileViewer({ onChange, ref }: ProfileViewerProps) {
         }
         if (option?.user_agent === "") {
           option.user_agent = undefined;
+        }
+        if (option) {
+          if (option.encrypted_subscription) {
+            if (typeof option.subscription_uuid === "string") {
+              const trimmedUuid = option.subscription_uuid.trim();
+              option.subscription_uuid = trimmedUuid ? trimmedUuid : undefined;
+            }
+          } else {
+            option.subscription_uuid = undefined;
+          }
         }
 
         const name = form.name || `${form.type} file`;
@@ -410,6 +434,41 @@ export function ProfileViewer({ onChange, ref }: ProfileViewerProps) {
               </StyledBox>
             )}
           />
+
+          <Controller
+            name="option.encrypted_subscription"
+            control={control}
+            render={({ field }) => (
+              <StyledBox>
+                <InputLabel>
+                  {t(
+                    "profiles.modals.profileForm.fields.encryptedSubscription",
+                  )}
+                </InputLabel>
+                <Switch checked={field.value} {...field} color="primary" />
+              </StyledBox>
+            )}
+          />
+
+          {encryptedSubscription && (
+            <Controller
+              name="option.subscription_uuid"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...text}
+                  {...field}
+                  label={t(
+                    "profiles.modals.profileForm.fields.subscriptionUuid",
+                  )}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  helperText={t(
+                    "profiles.modals.profileForm.hints.subscriptionUuid",
+                  )}
+                />
+              )}
+            />
+          )}
         </>
       )}
     </BaseDialog>

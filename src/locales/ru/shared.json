@@ -23,7 +23,8 @@
     "closeAll": "Закрыть всё",
     "clear": "Очистить",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "import": "Import"
   },
   "labels": {
     "updateAt": "Обновлено в",

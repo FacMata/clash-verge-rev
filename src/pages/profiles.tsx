@@ -44,6 +44,10 @@ import {
   ProfileViewer,
   ProfileViewerRef,
 } from "@/components/profile/profile-viewer";
+import {
+  UuidInputDialog,
+  UuidInputDialogRef,
+} from "@/components/profile/uuid-input-dialog";
 import { ConfigViewer } from "@/components/setting/mods/config-viewer";
 import { useListen } from "@/hooks/use-listen";
 import { useProfiles } from "@/hooks/use-profiles";
@@ -54,6 +58,7 @@ import {
   getProfiles,
   //restartCore,
   getRuntimeLogs,
+  importEncryptedProfile,
   importProfile,
   reorderProfile,
   updateProfile,
@@ -258,6 +263,7 @@ const ProfilePage = () => {
 
   const viewerRef = useRef<ProfileViewerRef>(null);
   const configRef = useRef<DialogRef>(null);
+  const uuidInputRef = useRef<UuidInputDialogRef>(null);
 
   // distinguish type
   const profileItems = useMemo(() => {
@@ -270,6 +276,43 @@ const ProfilePage = () => {
 
   const currentActivatings = () => {
     return [...new Set([profiles.current ?? ""])].filter(Boolean);
+  };
+
+  // Helper function to check if error is encrypted subscription error
+  const isEncryptedSubscriptionError = (error: unknown): boolean => {
+    const errorStr = String(error);
+    return (
+      errorStr.includes("X-Encrypted") ||
+      errorStr.includes("Encrypted subscription detected")
+    );
+  };
+
+  // Helper function to parse encrypted cache from error
+  const parseEncryptedCache = (
+    error: unknown,
+  ): EncryptedSubscriptionCache | null => {
+    const errorStr = String(error);
+    const prefix = "ENCRYPTED_CACHE::";
+    const idx = errorStr.indexOf(prefix);
+    if (idx === -1) return null;
+    try {
+      return JSON.parse(errorStr.slice(idx + prefix.length));
+    } catch {
+      return null;
+    }
+  };
+
+  // Helper function to import with UUID
+  const importWithUuid = async (
+    targetUrl: string,
+    uuid: string,
+    options?: { with_proxy?: boolean; self_proxy?: boolean },
+  ) => {
+    return importProfile(targetUrl, {
+      ...options,
+      encrypted_subscription: true,
+      subscription_uuid: uuid,
+    });
   };
 
   const onImport = async () => {
@@ -287,12 +330,79 @@ const ProfilePage = () => {
       await performRobustRefresh();
     };
 
+    // Helper function to handle encrypted cache import
+    const handleEncryptedCache = async (
+      cache: EncryptedSubscriptionCache,
+    ): Promise<boolean> => {
+      const uuid = await uuidInputRef.current?.open(cache.url);
+      if (!uuid) return false; // User cancelled
+
+      try {
+        await importEncryptedProfile(cache, uuid);
+        await handleImportSuccess(
+          "shared.feedback.notifications.importSuccess",
+        );
+        return true;
+      } catch (decryptErr) {
+        showNotice.error(
+          "profiles.page.feedback.notifications.importFail",
+          String(decryptErr),
+        );
+        return false;
+      }
+    };
+
     try {
       // 尝试正常导入
       await importProfile(url);
       await handleImportSuccess("shared.feedback.notifications.importSuccess");
     } catch (initialErr) {
       console.warn("[订阅导入] 首次导入失败:", initialErr);
+
+      // 优先尝试解析缓存（新流程）
+      const cache = parseEncryptedCache(initialErr);
+      if (cache) {
+        await handleEncryptedCache(cache);
+        setDisabled(false);
+        setLoading(false);
+        return;
+      }
+
+      // 兜底：旧版加密订阅错误格式
+      if (isEncryptedSubscriptionError(initialErr)) {
+        // Prompt user for UUID
+        const uuid = await uuidInputRef.current?.open(url);
+        if (uuid) {
+          try {
+            await importWithUuid(url, uuid);
+            await handleImportSuccess(
+              "shared.feedback.notifications.importSuccess",
+            );
+          } catch (uuidErr) {
+            console.warn("[订阅导入] 使用UUID导入失败:", uuidErr);
+            // Try with self proxy
+            showNotice.info("profiles.page.feedback.notifications.importRetry");
+            try {
+              await importWithUuid(url, uuid, {
+                with_proxy: false,
+                self_proxy: true,
+              });
+              await handleImportSuccess(
+                "shared.feedback.notifications.importWithClashProxy",
+              );
+            } catch (retryErr) {
+              showNotice.error(
+                "profiles.page.feedback.notifications.importFail",
+                String(retryErr),
+              );
+            }
+          }
+        }
+        // User cancelled UUID input
+        setDisabled(false);
+        setLoading(false);
+        return;
+      }
 
       showNotice.info("profiles.page.feedback.notifications.importRetry");
       try {
@@ -305,11 +415,41 @@ const ProfilePage = () => {
           "shared.feedback.notifications.importWithClashProxy",
         );
       } catch (retryErr) {
-        // 回退导入也失败
-        showNotice.error(
-          "profiles.page.feedback.notifications.importFail",
-          String(retryErr),
-        );
+        // 优先尝试解析缓存（新流程）
+        const retryCache = parseEncryptedCache(retryErr);
+        if (retryCache) {
+          await handleEncryptedCache(retryCache);
+          setDisabled(false);
+          setLoading(false);
+          return;
+        }
+
+        // 兜底：旧版加密订阅错误格式
+        if (isEncryptedSubscriptionError(retryErr)) {
+          const uuid = await uuidInputRef.current?.open(url);
+          if (uuid) {
+            try {
+              await importWithUuid(url, uuid, {
+                with_proxy: false,
+                self_proxy: true,
+              });
+              await handleImportSuccess(
+                "shared.feedback.notifications.importWithClashProxy",
+              );
+            } catch (finalErr) {
+              showNotice.error(
+                "profiles.page.feedback.notifications.importFail",
+                String(finalErr),
+              );
+            }
+          }
+        } else {
+          // 回退导入也失败
+          showNotice.error(
+            "profiles.page.feedback.notifications.importFail",
+            String(retryErr),
+          );
+        }
       }
     } finally {
       setDisabled(false);
@@ -1078,6 +1218,7 @@ const ProfilePage = () => {
         }}
       />
       <ConfigViewer ref={configRef} />
+      <UuidInputDialog ref={uuidInputRef} />
     </BasePage>
   );
 };

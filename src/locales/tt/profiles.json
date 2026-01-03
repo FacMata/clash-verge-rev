@@ -109,9 +109,17 @@
         "useSystemProxy": "Системалы проксины кулланып яңарту",
         "useClashProxy": "Clash прокси кулланып яңарту",
         "acceptInvalidCerts": "Дөрес булмаган сертификатларны кабул итү (Куркыныч)",
-        "allowAutoUpdate": "Allow Auto Update"
+        "allowAutoUpdate": "Allow Auto Update",
+        "encryptedSubscription": "Encrypted Subscription",
+        "subscriptionUuid": "Decryption UUID"
+      },
+      "hints": {
+        "subscriptionUuid": "UUID from your subscription panel"
       },
       "feedback": {
+        "errors": {
+          "uuidRequired": "UUID is required for encrypted subscriptions"
+        },
         "notifications": {
           "creationRetry": "Profile creation failed, retrying with Clash proxy...",
           "creationSuccess": "Profile creation succeeded with Clash proxy"
@@ -177,6 +185,13 @@
     },
     "logViewer": {
       "title": "Скрипт консоле"
+    },
+    "uuidInput": {
+      "title": "Encrypted Subscription Detected",
+      "fields": {
+        "url": "Subscription URL"
+      },
+      "hint": "This subscription is encrypted. Please enter your UUID to decrypt it."
     }
   }
 }

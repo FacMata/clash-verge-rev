@@ -109,9 +109,17 @@
         "useSystemProxy": "システムプロキシを使用して更新",
         "useClashProxy": "クラッシュプロキシを使用して更新",
         "acceptInvalidCerts": "Allows Invalid Certificates (Danger)",
-        "allowAutoUpdate": "Allow Auto Update"
+        "allowAutoUpdate": "Allow Auto Update",
+        "encryptedSubscription": "暗号化サブスクリプション",
+        "subscriptionUuid": "復号キー (UUID)"
+      },
+      "hints": {
+        "subscriptionUuid": "サブスクリプションパネルから取得したUUID"
       },
       "feedback": {
+        "errors": {
+          "uuidRequired": "暗号化サブスクリプションにはUUIDが必要です"
+        },
         "notifications": {
           "creationRetry": "プロファイルの作成に失敗しました。Clashプロキシを使用して再試行します...",
           "creationSuccess": "Clashプロキシを使用してプロファイルの作成に成功しました。"
@@ -177,6 +185,13 @@
     },
     "logViewer": {
       "title": "スクリプトコンソール出力"
+    },
+    "uuidInput": {
+      "title": "Encrypted Subscription Detected",
+      "fields": {
+        "url": "Subscription URL"
+      },
+      "hint": "This subscription is encrypted. Please enter your UUID to decrypt it."
     }
   }
 }

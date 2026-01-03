@@ -109,9 +109,17 @@
         "useSystemProxy": "시스템 프록시 사용",
         "useClashProxy": "Clash 프록시 사용",
         "acceptInvalidCerts": "잘못된 인증서 허용(위험)",
-        "allowAutoUpdate": "자동 업데이트 허용"
+        "allowAutoUpdate": "자동 업데이트 허용",
+        "encryptedSubscription": "암호화된 구독",
+        "subscriptionUuid": "복호화 키 (UUID)"
+      },
+      "hints": {
+        "subscriptionUuid": "구독 패널에서 가져온 UUID"
       },
       "feedback": {
+        "errors": {
+          "uuidRequired": "암호화된 구독에는 UUID가 필요합니다"
+        },
         "notifications": {
           "creationRetry": "프로필 생성 실패, Clash 프록시로 다시 시도 중...",
           "creationSuccess": "Clash 프록시로 프로필 생성 성공"
@@ -177,6 +185,13 @@
     },
     "logViewer": {
       "title": "스크립트 콘솔"
+    },
+    "uuidInput": {
+      "title": "Encrypted Subscription Detected",
+      "fields": {
+        "url": "Subscription URL"
+      },
+      "hint": "This subscription is encrypted. Please enter your UUID to decrypt it."
     }
   }
 }

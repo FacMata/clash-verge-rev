@@ -23,7 +23,8 @@
     "closeAll": "Close All",
     "clear": "Clear",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "import": "Import"
   },
   "labels": {
     "updateAt": "Update At",

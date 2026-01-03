@@ -47,6 +47,13 @@ export async function importProfile(url: string, option?: IProfileOption) {
   });
 }
 
+export async function importEncryptedProfile(
+  cache: EncryptedSubscriptionCache,
+  uuid: string,
+) {
+  return invoke<void>("import_encrypted_profile", { cache, uuid });
+}
+
 export async function reorderProfile(activeId: string, overId: string) {
   return invoke<void>("reorder_profile", {
     activeId,
