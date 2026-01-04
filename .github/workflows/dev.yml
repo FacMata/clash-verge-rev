@@ -125,6 +125,11 @@ jobs:
         if: github.event.inputs[matrix.input] == 'true'
         run: pnpm release-version ${{ env.TAG_NAME }}
 
+      - name: Patch Tauri config (dev build)
+        if: github.event.inputs[matrix.input] == 'true'
+        run: |
+          node -e "const fs=require('fs');const path='src-tauri/tauri.conf.json';const data=JSON.parse(fs.readFileSync(path,'utf8'));if(data.bundle){data.bundle.createUpdaterArtifacts=false;}if(data.plugins&&data.plugins.updater){delete data.plugins.updater;}fs.writeFileSync(path,JSON.stringify(data,null,2));"
+
       - name: Add Rust Target
         if: github.event.inputs[matrix.input] == 'true'
         run: |
@@ -139,14 +144,6 @@ jobs:
         env:
           NODE_OPTIONS: "--max_old_space_size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tauriScript: pnpm
           args: --target ${{ matrix.target }} -b ${{ matrix.bundle }}

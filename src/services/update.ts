@@ -1,20 +1,32 @@
-import {
-  check,
-  type CheckOptions,
-  type Update,
-} from "@tauri-apps/plugin-updater";
-
-import { version as appVersion } from "@root/package.json";
+// Updater functionality disabled for unsigned builds
 
 export type VersionParts = {
   main: number[];
   pre: (number | string)[];
 };
 
-const SEMVER_FULL_REGEX =
-  /^\d+(?:\.\d+){1,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-const SEMVER_SEARCH_REGEX =
-  /v?\d+(?:\.\d+){1,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?/i;
+export type CheckOptions = Record<string, unknown>;
+
+export type DownloadEvent = {
+  event: string;
+  data?: {
+    chunkLength?: number;
+    contentLength?: number;
+  };
+};
+
+export type Update = {
+  version: string;
+  available: boolean;
+  body?: string;
+  rawJson?: Record<string, unknown>;
+  close: () => Promise<void>;
+  download: () => Promise<void>;
+  install: () => Promise<void>;
+  downloadAndInstall: (
+    onEvent?: (event: DownloadEvent) => void,
+  ) => Promise<void>;
+};
 
 export const normalizeVersion = (
   input: string | null | undefined,
@@ -30,6 +42,8 @@ export const ensureSemver = (
 ): string | null => {
   const normalized = normalizeVersion(input);
   if (!normalized) return null;
+  const SEMVER_FULL_REGEX =
+    /^\d+(?:\.\d+){1,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
   return SEMVER_FULL_REGEX.test(normalized) ? normalized : null;
 };
 
@@ -37,6 +51,8 @@ export const extractSemver = (
   input: string | null | undefined,
 ): string | null => {
   if (typeof input !== "string") return null;
+  const SEMVER_SEARCH_REGEX =
+    /v?\d+(?:\.\d+){1,2}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?/i;
   const match = input.match(SEMVER_SEARCH_REGEX);
   if (!match) return null;
   return normalizeVersion(match[0]);
@@ -59,21 +75,28 @@ export const splitVersion = (version: string | null): VersionParts | null => {
   return { main, pre };
 };
 
-const compareVersionParts = (a: VersionParts, b: VersionParts): number => {
-  const length = Math.max(a.main.length, b.main.length);
+export const compareVersions = (
+  a: string | null,
+  b: string | null,
+): number | null => {
+  const partsA = splitVersion(a);
+  const partsB = splitVersion(b);
+  if (!partsA || !partsB) return null;
+
+  const length = Math.max(partsA.main.length, partsB.main.length);
   for (let i = 0; i < length; i += 1) {
-    const diff = (a.main[i] ?? 0) - (b.main[i] ?? 0);
+    const diff = (partsA.main[i] ?? 0) - (partsB.main[i] ?? 0);
     if (diff !== 0) return diff > 0 ? 1 : -1;
   }
 
-  if (a.pre.length === 0 && b.pre.length === 0) return 0;
-  if (a.pre.length === 0) return 1;
-  if (b.pre.length === 0) return -1;
+  if (partsA.pre.length === 0 && partsB.pre.length === 0) return 0;
+  if (partsA.pre.length === 0) return 1;
+  if (partsB.pre.length === 0) return -1;
 
-  const preLen = Math.max(a.pre.length, b.pre.length);
+  const preLen = Math.max(partsA.pre.length, partsB.pre.length);
   for (let i = 0; i < preLen; i += 1) {
-    const aToken = a.pre[i];
-    const bToken = b.pre[i];
+    const aToken = partsA.pre[i];
+    const bToken = partsB.pre[i];
     if (aToken === undefined) return -1;
     if (bToken === undefined) return 1;
 
@@ -91,16 +114,6 @@ const compareVersionParts = (a: VersionParts, b: VersionParts): number => {
   }
 
   return 0;
-};
-
-export const compareVersions = (
-  a: string | null,
-  b: string | null,
-): number | null => {
-  const partsA = splitVersion(a);
-  const partsB = splitVersion(b);
-  if (!partsA || !partsB) return null;
-  return compareVersionParts(partsA, partsB);
 };
 
 export const resolveRemoteVersion = (update: Update): string | null => {
@@ -129,27 +142,9 @@ export const resolveRemoteVersion = (update: Update): string | null => {
   return null;
 };
 
-const localVersionNormalized = normalizeVersion(appVersion);
-
+// Updater disabled - always returns null
 export const checkUpdateSafe = async (
-  options?: CheckOptions,
+  _options?: CheckOptions,
 ): Promise<Update | null> => {
-  const result = await check({ ...(options ?? {}), allowDowngrades: false });
-  if (!result) return null;
-
-  const remoteVersion = resolveRemoteVersion(result);
-  const comparison = compareVersions(remoteVersion, localVersionNormalized);
-
-  if (comparison !== null && comparison <= 0) {
-    try {
-      await result.close();
-    } catch (err) {
-      console.warn("[updater] failed to close stale update resource", err);
-    }
-    return null;
-  }
-
-  return result;
+  return null;
 };
-
-export type { CheckOptions };

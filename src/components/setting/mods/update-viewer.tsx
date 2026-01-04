@@ -1,7 +1,6 @@
 import { Box, Button, LinearProgress } from "@mui/material";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { open as openUrl } from "@tauri-apps/plugin-shell";
-import type { DownloadEvent } from "@tauri-apps/plugin-updater";
 import { useLockFn } from "ahooks";
 import type { Ref } from "react";
 import { useImperativeHandle, useMemo, useRef, useState } from "react";
@@ -14,6 +13,7 @@ import { BaseDialog, DialogRef } from "@/components/base";
 import { portableFlag } from "@/pages/_layout";
 import { showNotice } from "@/services/notice-service";
 import { useSetUpdateState, useUpdateState } from "@/services/states";
+import type { DownloadEvent } from "@/services/update";
 import { checkUpdateSafe as checkUpdate } from "@/services/update";
 
 export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
@@ -77,7 +77,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
 
     const onDownloadEvent = (event: DownloadEvent) => {
       if (event.event === "Started") {
-        const contentLength = event.data.contentLength ?? 0;
+        const contentLength = event.data?.contentLength ?? 0;
         totalRef.current = contentLength;
         setTotal(contentLength);
         setDownloaded(0);
@@ -87,7 +87,7 @@ export function UpdateViewer({ ref }: { ref?: Ref<DialogRef> }) {
 
       if (event.event === "Progress") {
         setDownloaded((prev) => {
-          const next = prev + event.data.chunkLength;
+          const next = prev + (event.data?.chunkLength ?? 0);
           downloadedRef.current = next;
           return next;
         });

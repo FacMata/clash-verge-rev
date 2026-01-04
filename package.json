@@ -53,7 +53,6 @@
     "@tauri-apps/plugin-http": "~2.5.4",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-shell": "2.3.3",
-    "@tauri-apps/plugin-updater": "2.9.0",
     "ahooks": "^3.9.6",
     "axios": "^1.13.2",
     "dayjs": "1.11.19",
